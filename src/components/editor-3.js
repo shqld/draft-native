@@ -2,19 +2,20 @@
 import React from 'react'
 import { View, TextInput, Text, Button } from 'react-native'
 
-import { EditorState, ContentState, SelectionState, Modifier, RichUtils } from '../lib/draft-js'
+import { EditorState, ContentState, SelectionState, Modifier, RichUtils, insertTextIntoContentState } from '../lib/draft-js'
 import * as ChangeType from '../lib/editor-change-type'
-import { selectionToSelectionState } from '../lib/selection-fns'
+import Selection, { NativeSelection } from '../lib/selection'
 
 import Renderer from './renderer'
 
+/**
+ * Nativeの都合上、スタイルを変えたあとにもう一度forceSelectionする必要がある。
+ */
+
 type Props = {}
 type State = {
-    editorState: EditorState
-}
-type Selection = {
-    start: number,
-    end: number,
+    editorState: EditorState,
+    nativeSelection: NativeSelection,
 }
 
 export default class Editor extends React.Component {
@@ -23,11 +24,12 @@ export default class Editor extends React.Component {
 
         this.state = {
             editorState: EditorState.createEmpty(),
-            selection: null,
+            forceSelection: null,
         }
 
-        this.selection = { start: 0, end: 0 }
+        this.selection = new Selection()
         this.shouldSelectionUpdate = true
+        this.latestContent = this.state.editorState.getCurrentContent()
 
         this.onSelectionChange = this.buildHandler(this.onSelectionChange)
         this.onTextInput = this.buildHandler(this.onTextInput)
@@ -35,6 +37,7 @@ export default class Editor extends React.Component {
 
     selection: Selection
     shouldSelectionUpdate: boolean
+    latestContent: ContentState
 
     toggleHeader = () => {
         const editorState = RichUtils.toggleBlockType(
@@ -42,90 +45,66 @@ export default class Editor extends React.Component {
             'header-one'
         )
 
-        console.log(this.selection)
-        const currentSelection = this.selection
-        const selection = {
+        const { currentSelection } = this.selection
+
+        const tmpSelection = {
             start: currentSelection.start - 1,
             end: currentSelection.end - 1,
         }
-        // HACK
-        this.setState({ editorState, selection }, () => {
-            this.setState({ selection: null })
-        })
+
+        this.setState(
+            { editorState, forceSelection: tmpSelection },
+            () => this.setState(
+                { forceSelection: null }
+            )
+        )
     }
 
     toggleInlineStyle = (style) => {
-        const editorState = RichUtils.toggleInlineStyle(
+        let editorState = RichUtils.toggleInlineStyle(
             this.state.editorState,
             style
         )
 
         this.setState({ editorState })
+
+        // const { currentSelection } = this.selection
+        
+        // const tmpSelection = {
+        //     start: currentSelection.start - 1,
+        //     end: currentSelection.end - 1,
+        // }
+
+        // this.setState(
+        //     { editorState, forceSelection: tmpSelection },
+        //     () => { this.setState({ forceSelection: null }) }
+        // )
     }
 
     onSelectionChange = ({ selection }) => {
-        // console.group('onSelectionChange')
-        // console.info(
-        //     'selectionState',
-        //     this.state.editorState.getSelection().getAnchorOffset(),
-        //     this.state.editorState.getSelection().getFocusOffset()
-        // )
-        // console.info(
-        //     'this.selection',
-        //     this.selection.start,
-        //     this.selection.end
-        // )
-        // console.info(
-        //     'event',
-        //     selection.start,
-        //     selection.end
-        // )
-
         if (!this.shouldSelectionUpdate) {
             this.shouldSelectionUpdate = true
-            this.selection = selection
+            this.selection.setSelection(selection)
 
-            // console.info(
-            //     'updated this.selection',
-            //     this.selection.start,
-            //     this.selection.end
-            // )
-            // console.info(
-            //     'selectionState',
-            //     this.state.editorState.getSelection().getAnchorOffset(),
-            //     this.state.editorState.getSelection().getFocusOffset()
-            // )
-            // console.groupEnd('onSelectionChange')
             return
         }
 
+        this.shouldSelectionUpdate = true
+
         const { editorState } = this.state
 
-        const selectionState = selectionToSelectionState(
-            this.selection,
-            selection,
-            editorState.getSelection(),
-            editorState.getCurrentContent()
-        )
+        // const __es = EditorState.set(
+        //         editorState, {
+        //             selection: new Selection(selection).toState(editorState),
+        //         }
+        //     )
+        // console.log(__es.getCurrentInlineStyle().toJS())
+        // console.log(__es.getSelection().toJS())
 
-        this.shouldSelectionUpdate = true
-        this.selection = selection
-
-        // console.info(
-        //     'updated this.selection',
-        //     this.selection.start,
-        //     this.selection.end
-        // )
-        // console.log(
-        //     'updated SelectionState',
-        //     selectionState.getAnchorOffset(),
-        //     selectionState.getFocusOffset(),
-        // )
-        // console.groupEnd('onSelectionChange')
-
-        return EditorState.acceptSelection(
-            editorState,
-            selectionState,
+        return EditorState.set(
+            editorState, {
+                selection: new Selection(selection).toState(editorState),
+            }
         )
     }
 
@@ -137,21 +116,12 @@ export default class Editor extends React.Component {
             /**
              * 文字置換(変換も)
              */
-            // console.log('range', range)
             if (previousText === text) return
-
-            const selectionState = selectionToSelectionState(
-                this.selection,
-                range,
-                editorState.getSelection(),
-                editorState.getCurrentContent()
-            )
-            // console.log()
 
             const contentState =
                 Modifier.replaceText(
                     editorState.getCurrentContent(),
-                    selectionState,
+                    new Selection(range).toState(editorState),
                     text
                 )
 
@@ -172,20 +142,14 @@ export default class Editor extends React.Component {
                     '\n'
                 )
 
-            const newEditorState = EditorState.push(
-                editorState,
-                contentState,
-                ChangeType.INSERT_CHARACTERS
-            )
-
             contentState =
                 Modifier.splitBlock(
                     contentState,
-                    newEditorState.getSelection()
+                    contentState.getSelectionAfter()
                 )
     
             return EditorState.push(
-                newEditorState,
+                editorState,
                 contentState,
                 ChangeType.SPLIT_BLOCK
             )
@@ -194,17 +158,10 @@ export default class Editor extends React.Component {
             /**
              * 削除
              */
-            const selectionState = selectionToSelectionState(
-                this.selection,
-                range,
-                editorState.getSelection(),
-                editorState.getCurrentContent()
-            )
-
             const contentState =
                 Modifier.removeRange(
                     editorState.getCurrentContent(),
-                    selectionState
+                    new Selection(range).toState(editorState),
                 )
     
             return EditorState.push(
@@ -220,27 +177,20 @@ export default class Editor extends React.Component {
             const contentState = Modifier.insertText(
                 editorState.getCurrentContent(),
                 editorState.getSelection(),
-                text
+                text,
+                editorState.getCurrentInlineStyle()
             )
-        
-            return EditorState.push(
-                editorState,
-                contentState,
-                ChangeType.INSERT_CHARACTERS
-            )
+
+            return EditorState.set(editorState, {
+                currentContent: contentState,
+                selection: contentState.getSelectionAfter()
+            })
         }
     }
 
     buildHandler = (handler) => ({ nativeEvent }) => {
-        // console.log(nativeEvent)
         const editorState = handler(nativeEvent)
         if (editorState) {
-
-            // console.info(
-            //     editorState.getCurrentContent().toJS(),
-            //     editorState.getSelection().toJS()
-            // )
-
             this.setState({ editorState })
         }
     }
@@ -259,10 +209,10 @@ export default class Editor extends React.Component {
                     autoFocus
                     autoCapitalize="none"
                     autoCorrect={false}
-                    style={{ flex: 1, paddingTop: 30, padding: 10 }}
+                    style={{ flex: 1, paddingTop: 30, padding: 10, fontSize: 15 }}
                     onSelectionChange={this.onSelectionChange}
                     onTextInput={this.onTextInput}
-                    selection={this.state.selection}
+                    selection={this.state.forceSelection}
                 >
                     <Renderer
                         editorState={this.state.editorState}

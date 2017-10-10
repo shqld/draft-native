@@ -5,6 +5,7 @@ export { default as Modifier } from 'draft-js/lib/DraftModifier'
 export { default as ContentBlock } from 'draft-js/lib/ContentBlock'
 export { default as RichUtils } from 'draft-js/lib/RichTextEditorUtil'
 export { default as DefaultDraftInlineStyle } from 'draft-js/lib/DefaultDraftInlineStyle'
+export { default as insertTextIntoContentState } from 'draft-js/lib/insertTextIntoContentState'
 
 /**
  * FIXME: For development

@@ -65,10 +65,10 @@ class Leaf extends React.Component<Props> {
             return map
         }, [])
 
-        if (customStyleFn) {
-          const newStyles = customStyleFn(styleSet, block)
-          styleObj = Object.assign(styleObj, newStyles)
-        }
+        // if (customStyleFn) {
+        //   const newStyles = customStyleFn(styleSet, block)
+        //   styleObj = Object.assign(styleObj, newStyles)
+        // }
     
         return (
             <Text

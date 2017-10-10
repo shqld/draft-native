@@ -1,7 +1,7 @@
 // @flow
 import { SelectionState, ContentState } from './draft-js'
 
-const getKeyOffset = (contentState: ContentState, currentKey: stirng, currentOffset: number, delta): { key: string, offset: number } => {
+const getKeyOffset = (contentState: ContentState, currentKey: string, currentOffset: number, delta): { key: string, offset: number } => {
     let key = currentKey
     let offset = currentOffset + delta
 

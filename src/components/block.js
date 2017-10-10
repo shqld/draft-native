@@ -32,8 +32,6 @@ class Block extends React.Component<Props> {
         const lastLeafSet = tree.size - 1;
         // const hasSelection = isBlockOnSelectionEdge(this.props.selection, blockKey);
 
-        console.log(tree.toJS())
-
         return tree.map((leafSet, ii) => {
             const leavesForLeafSet = leafSet.get('leaves')
             const lastLeaf = leavesForLeafSet.size - 1
@@ -52,9 +50,9 @@ class Block extends React.Component<Props> {
                         // forceSelection={this.props.forceSelection}
                         text={text.slice(start, end)}
                         styleSet={block.getInlineStyleAt(start)}
-                        customStyleMap={this.props.customStyleMap}
-                        customStyleFn={this.props.customStyleFn}
-                        isLast={ii === lastLeafSet && jj === lastLeaf}
+                        // customStyleMap={this.props.customStyleMap}
+                        // customStyleFn={this.props.customStyleFn}
+                        // isLast={ii === lastLeafSet && jj === lastLeaf}
                     />
                 )
             }).toArray()
@@ -70,8 +68,8 @@ class Block extends React.Component<Props> {
             <Text
                 style={defaultStyles[block.getType()]}
             >
-                { /*this.renderChildren()*/ }
-                { block.getText() }
+                { this.renderChildren() }
+                { /*block.getText()*/ }
             </Text>
         )
     }

@@ -3,7 +3,7 @@ import {
   StyleSheet,
   View
 } from 'react-native'
-import Editor from './components/editor-2'
+import Editor from './components/editor-3'
 
 export default class app extends Component {
   render() {
