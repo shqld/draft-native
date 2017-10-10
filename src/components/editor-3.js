@@ -1,12 +1,14 @@
 // @flow
 import React from 'react'
-import { View, TextInput, Text, Button } from 'react-native'
+import { View, TextInput, Text, Button, Platform } from 'react-native'
 
 import { EditorState, ContentState, SelectionState, Modifier, RichUtils, insertTextIntoContentState } from '../lib/draft-js'
 import * as ChangeType from '../lib/editor-change-type'
 import Selection, { NativeSelection } from '../lib/selection'
 
 import Renderer from './renderer'
+
+const isAndroid = Platform.OS === 'android'
 
 /**
  * Nativeの都合上、スタイルを変えたあとにもう一度forceSelectionする必要がある。
@@ -45,6 +47,7 @@ export default class Editor extends React.Component {
             'header-one'
         )
 
+        if (isAndroid) return this.setState({ editorState })
         // return this.setState({ editorState })
 
         const currentSelection = Object.assign({}, this.selection.currentSelection)
@@ -60,7 +63,7 @@ export default class Editor extends React.Component {
         this.setState(
             { editorState, forceSelection: tmpSelection },
             () => this.setState(
-                { forceSelection: currentSelection }
+                { forceSelection: null }
             )
         )
     }
