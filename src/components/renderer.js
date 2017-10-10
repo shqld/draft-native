@@ -54,11 +54,11 @@ export default class Renderer extends React.Component<Props> {
         const nextDecorator = nextEditorState.getDecorator();
         return (
           wasComposing !== nowComposing ||
-          prevContent !== nextContent ||
-          prevDecorator !== nextDecorator ||
-          nextEditorState.mustForceSelection()
+          prevContent !== nextContent
+        //   prevDecorator !== nextDecorator ||
+        //   nextEditorState.mustForceSelection()
         );
-      }
+    }
 
     renderChildren() {
         const { editorState } = this.props
@@ -76,6 +76,7 @@ export default class Renderer extends React.Component<Props> {
     }
 
     render() {
+        console.log('Renderer', 'renders')
         return (
             <Text>
                 { this.renderChildren() }

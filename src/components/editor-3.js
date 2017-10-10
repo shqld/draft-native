@@ -45,17 +45,22 @@ export default class Editor extends React.Component {
             'header-one'
         )
 
-        const { currentSelection } = this.selection
+        // return this.setState({ editorState })
+
+        const currentSelection = Object.assign({}, this.selection.currentSelection)
+
+        console.log(currentSelection)
 
         const tmpSelection = {
             start: currentSelection.start - 1,
             end: currentSelection.end - 1,
         }
+        console.log(tmpSelection)
 
         this.setState(
             { editorState, forceSelection: tmpSelection },
             () => this.setState(
-                { forceSelection: null }
+                { forceSelection: currentSelection }
             )
         )
     }
@@ -66,40 +71,36 @@ export default class Editor extends React.Component {
             style
         )
 
-        this.setState({ editorState })
-
-        // const { currentSelection } = this.selection
-        
-        // const tmpSelection = {
-        //     start: currentSelection.start - 1,
-        //     end: currentSelection.end - 1,
-        // }
-
-        // this.setState(
-        //     { editorState, forceSelection: tmpSelection },
-        //     () => { this.setState({ forceSelection: null }) }
-        // )
+        if (this.state.editorState.getSelection().isCollapsed()) {
+            const { currentSelection } = this.selection
+            
+            const tmpSelection = {
+                start: currentSelection.start - 1,
+                end: currentSelection.end - 1,
+            }
+            // console.log(tmpSelection)
+    
+            this.setState(
+                { editorState, forceSelection: tmpSelection },
+                () => { this.setState({ forceSelection: null }) }
+            )
+        } else {
+            this.setState({ editorState })
+        }
     }
 
     onSelectionChange = ({ selection }) => {
-        if (!this.shouldSelectionUpdate) {
-            this.shouldSelectionUpdate = true
-            this.selection.setSelection(selection)
-
-            return
-        }
-
         this.shouldSelectionUpdate = true
+        this.selection.setSelection(selection)
+
+        // if (!this.shouldSelectionUpdate) {
+        //     this.shouldSelectionUpdate = true
+        //     this.selection.setSelection(selection)
+
+        //     return
+        // }
 
         const { editorState } = this.state
-
-        // const __es = EditorState.set(
-        //         editorState, {
-        //             selection: new Selection(selection).toState(editorState),
-        //         }
-        //     )
-        // console.log(__es.getCurrentInlineStyle().toJS())
-        // console.log(__es.getSelection().toJS())
 
         return EditorState.set(
             editorState, {
@@ -178,13 +179,16 @@ export default class Editor extends React.Component {
                 editorState.getCurrentContent(),
                 editorState.getSelection(),
                 text,
-                editorState.getCurrentInlineStyle()
+                editorState.getInlineStyleOverride() || editorState.getCurrentInlineStyle()
             )
 
-            return EditorState.set(editorState, {
+            const newEditorState = EditorState.set(editorState, {
                 currentContent: contentState,
+                nativelyRenderedContent: contentState,
                 selection: contentState.getSelectionAfter()
             })
+
+            return newEditorState
         }
     }
 
@@ -196,7 +200,6 @@ export default class Editor extends React.Component {
     }
 
     render() {
-
         return (
             <View style={{ flex: 1, paddingTop: 20 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
