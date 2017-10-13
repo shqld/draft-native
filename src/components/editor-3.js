@@ -10,14 +10,18 @@ import Renderer from './renderer'
 
 const isAndroid = Platform.OS === 'android'
 
-/**
- * Nativeの都合上、スタイルを変えたあとにもう一度forceSelectionする必要がある。
- */
-
 type Props = {}
 type State = {
     editorState: EditorState,
     nativeSelection: NativeSelection,
+}
+type TextInputRef = {
+    setNativeProps: (nativeProps: NativeProps) => void,
+    clear: () => void,
+}
+type NativeProps = {
+    text?: string,
+    selection: string,
 }
 
 export default class Editor extends React.Component {
@@ -31,15 +35,45 @@ export default class Editor extends React.Component {
 
         this.selection = new Selection()
         this.shouldSelectionUpdate = true
-        this.latestContent = this.state.editorState.getCurrentContent()
 
         this.onSelectionChange = this.buildHandler(this.onSelectionChange)
         this.onTextInput = this.buildHandler(this.onTextInput)
     }
 
+    clear() { 
+        this.ref.clear()
+    }
+
+    setNativeProps(nativeProps: NativeProps) {
+        this.ref.setNativeProps(nativeProps)
+    }
+
     selection: Selection
     shouldSelectionUpdate: boolean
-    latestContent: ContentState
+    ref: TextInputRef
+
+    /**
+     * This is a trick for using
+     * native rendering of rich text editing
+     */
+    refreshSelection(currentSelection: NativeSelection) {
+        const tmpSelection: NativeSelection = {
+            start: currentSelection.start - 1,
+            end: currentSelection.end - 1,
+        }
+        this.setNativeProps({ selection: tmpSelection })
+        this.setNativeProps({ selection: currentSelection })
+    }
+
+    // componentDidUpdate(prevProps, prevState) {
+    //     if (
+    //         prevState.editorState.getInlineStyleOverride() ===
+    //             this.state.editorState.getInlineStyleOverride()
+    //     ) {
+    //         const currentSelection = Object.assign({}, this.selection.currentSelection)
+    //         this.refreshSelection(currentSelection)
+    //     }
+    // }
 
     toggleHeader = () => {
         const editorState = RichUtils.toggleBlockType(
@@ -48,24 +82,11 @@ export default class Editor extends React.Component {
         )
 
         if (isAndroid) return this.setState({ editorState })
-        // return this.setState({ editorState })
 
         const currentSelection = Object.assign({}, this.selection.currentSelection)
 
-        console.log(currentSelection)
-
-        const tmpSelection = {
-            start: currentSelection.start - 1,
-            end: currentSelection.end - 1,
-        }
-        console.log(tmpSelection)
-
-        this.setState(
-            { editorState, forceSelection: tmpSelection },
-            () => this.setState(
-                { forceSelection: null }
-            )
-        )
+        this.setState({ editorState })
+        this.refreshSelection(currentSelection)
     }
 
     toggleInlineStyle = (style) => {
@@ -76,17 +97,9 @@ export default class Editor extends React.Component {
 
         if (this.state.editorState.getSelection().isCollapsed()) {
             const { currentSelection } = this.selection
-            
-            const tmpSelection = {
-                start: currentSelection.start - 1,
-                end: currentSelection.end - 1,
-            }
-            // console.log(tmpSelection)
-    
-            this.setState(
-                { editorState, forceSelection: tmpSelection },
-                () => { this.setState({ forceSelection: null }) }
-            )
+
+            this.setState({ editorState })
+            this.refreshSelection(currentSelection)
         } else {
             this.setState({ editorState })
         }
@@ -118,7 +131,7 @@ export default class Editor extends React.Component {
 
         if (previousText && text) {
             /**
-             * 文字置換(変換も)
+             * Replace & composite
              */
             if (previousText === text) return
 
@@ -137,7 +150,7 @@ export default class Editor extends React.Component {
         }
         else if (text === '\n') {
             /**
-             * 改行
+             * Newline
              */
             let contentState =
                 Modifier.insertText(
@@ -160,7 +173,7 @@ export default class Editor extends React.Component {
         }
         else if (previousText) {
             /**
-             * 削除
+             * Remove
              */
             const contentState =
                 Modifier.removeRange(
@@ -176,7 +189,7 @@ export default class Editor extends React.Component {
         }
         else {
             /**
-             * 挿入
+             * Insert
              */
             const contentState = Modifier.insertText(
                 editorState.getCurrentContent(),
@@ -211,6 +224,7 @@ export default class Editor extends React.Component {
                     <Button title="Bold" onPress={() => this.toggleInlineStyle('BOLD')} style={{ width: 80, height: 30 }} />
                 </View>
                 <TextInput
+                    ref={ref => { this.ref = ref }}
                     multiline
                     autoFocus
                     autoCapitalize="none"

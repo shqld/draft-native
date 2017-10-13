@@ -12,7 +12,7 @@ const defaultStyles = StyleSheet.create({
 })
 
 type Props = {
-    // tree: Object,
+    tree: Object,
     block: ContentBlock,
 }
 
