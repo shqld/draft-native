@@ -1,7 +1,7 @@
 // @flow
 import React from 'react'
 import { Text, StyleSheet } from 'react-native'
-import { DraftInlineStyle } from '../lib/draft-js'
+import { ContentBlock, DraftInlineStyle } from '../lib/draft-js'
 
 const styles = StyleSheet.create({
     ITALIC: {
@@ -14,6 +14,7 @@ const styles = StyleSheet.create({
 
 type Props = {
     text: string,
+    block: ContentBlock,
     styleSet: DraftInlineStyle,
 }
 
@@ -46,7 +47,7 @@ class Leaf extends React.Component<Props> {
         //   text += '\n'
         // }
     
-        const {customStyleMap, customStyleFn, offsetKey, styleSet} = this.props
+        const {/*customStyleMap, customStyleFn, offsetKey, */styleSet} = this.props
         let styleObj = styleSet.reduce((map, styleName) => {
         //   const mergedStyles = {}
         //   const style = customStyleMap[styleName]

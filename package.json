@@ -4,12 +4,13 @@
 	"private": true,
 	"scripts": {
 		"start": "node node_modules/react-native/local-cli/cli.js start",
-		"test": "jest"
+		"test": "jest",
+		"flow": "flow src"
 	},
 	"dependencies": {
 		"draft-js": "^0.10.3",
 		"react": "16.0.0-beta.5",
-		"react-native": "0.49.1"
+		"react-native": "0.49.2"
 	},
 	"devDependencies": {
 		"babel-jest": "21.2.0",

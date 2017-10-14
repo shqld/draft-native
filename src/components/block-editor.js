@@ -1,4 +1,3 @@
-// @flow
 import React from 'react'
 import { View, TextInput, Text, Button, Platform } from 'react-native'
 

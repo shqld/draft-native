@@ -1,8 +1,13 @@
-// @flow
+/**
+ * TODO
+ * - [ ] Fix setState chains => componentDidUpdate etc.
+ * 
+ * @flow
+ */
 import React from 'react'
 import { View, TextInput, Text, Button, Platform } from 'react-native'
 
-import { EditorState, ContentState, SelectionState, Modifier, RichUtils, insertTextIntoContentState } from '../lib/draft-js'
+import { EditorState, ContentState, SelectionState, Modifier, RichUtils } from '../lib/draft-js'
 import * as ChangeType from '../lib/editor-change-type'
 import Selection, { NativeSelection } from '../lib/selection'
 
@@ -13,7 +18,6 @@ const isAndroid = Platform.OS === 'android'
 type Props = {}
 type State = {
     editorState: EditorState,
-    nativeSelection: NativeSelection,
 }
 type TextInputRef = {
     setNativeProps: (nativeProps: NativeProps) => void,
@@ -24,13 +28,16 @@ type NativeProps = {
     selection: string,
 }
 
-export default class Editor extends React.Component {
+export default class Editor extends React.Component<Props, State> {
+    selection: Selection
+    shouldSelectionUpdate: boolean
+    ref: TextInputRef
+
     constructor(props: Props) {
         super(props)
 
         this.state = {
             editorState: EditorState.createEmpty(),
-            forceSelection: null,
         }
 
         this.selection = new Selection()
@@ -48,10 +55,6 @@ export default class Editor extends React.Component {
         this.ref.setNativeProps(nativeProps)
     }
 
-    selection: Selection
-    shouldSelectionUpdate: boolean
-    ref: TextInputRef
-
     /**
      * This is a trick for using
      * native rendering of rich text editing
@@ -64,16 +67,6 @@ export default class Editor extends React.Component {
         this.setNativeProps({ selection: tmpSelection })
         this.setNativeProps({ selection: currentSelection })
     }
-
-    // componentDidUpdate(prevProps, prevState) {
-    //     if (
-    //         prevState.editorState.getInlineStyleOverride() ===
-    //             this.state.editorState.getInlineStyleOverride()
-    //     ) {
-    //         const currentSelection = Object.assign({}, this.selection.currentSelection)
-    //         this.refreshSelection(currentSelection)
-    //     }
-    // }
 
     toggleHeader = () => {
         const editorState = RichUtils.toggleBlockType(
@@ -89,32 +82,29 @@ export default class Editor extends React.Component {
         this.refreshSelection(currentSelection)
     }
 
-    toggleInlineStyle = (style) => {
+    toggleInlineStyle = (style: string) => {
         let editorState = RichUtils.toggleInlineStyle(
             this.state.editorState,
             style
         )
 
         if (this.state.editorState.getSelection().isCollapsed()) {
-            const { currentSelection } = this.selection
+            const currentSelection = Object.assign({}, this.selection.currentSelection)
 
+            // this.setState({ editorState }, () => {
+            //     this.refreshSelection(currentSelection)
+            // })
             this.setState({ editorState })
-            this.refreshSelection(currentSelection)
         } else {
             this.setState({ editorState })
         }
     }
 
-    onSelectionChange = ({ selection }) => {
+    onSelectionChange = ({ selection }: { selection: NativeSelection }): EditorState => {
         this.shouldSelectionUpdate = true
         this.selection.setSelection(selection)
 
-        // if (!this.shouldSelectionUpdate) {
-        //     this.shouldSelectionUpdate = true
-        //     this.selection.setSelection(selection)
-
-        //     return
-        // }
+        // if (!this.shouldSelectionUpdate) return
 
         const { editorState } = this.state
 
@@ -125,7 +115,7 @@ export default class Editor extends React.Component {
         )
     }
 
-    onTextInput = ({ text, previousText, range }) => {
+    onTextInput = ({ text, previousText, range }: { text: string, previousText: string, range: NativeSelection }): ?EditorState => {
         const { editorState } = this.state
         this.shouldSelectionUpdate = false
 
@@ -175,12 +165,13 @@ export default class Editor extends React.Component {
             /**
              * Remove
              */
-            const contentState =
+            const contentState: ContentState =
                 Modifier.removeRange(
                     editorState.getCurrentContent(),
                     new Selection(range).toState(editorState),
+                    'backward'
                 )
-    
+
             return EditorState.push(
                 editorState,
                 contentState,
@@ -208,14 +199,15 @@ export default class Editor extends React.Component {
         }
     }
 
-    buildHandler = (handler) => ({ nativeEvent }) => {
-        const editorState = handler(nativeEvent)
+    buildHandler = (handler: (nativeEvent: Object) => ?EditorState) => ({ nativeEvent }: { nativeEvent: Object}) => {
+        const editorState: ?EditorState = handler(nativeEvent)
         if (editorState) {
             this.setState({ editorState })
         }
     }
 
     render() {
+        console.log('render')
         return (
             <View style={{ flex: 1, paddingTop: 20 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
@@ -224,7 +216,7 @@ export default class Editor extends React.Component {
                     <Button title="Bold" onPress={() => this.toggleInlineStyle('BOLD')} style={{ width: 80, height: 30 }} />
                 </View>
                 <TextInput
-                    ref={ref => { this.ref = ref }}
+                    ref={(ref: TextInputRef) => { this.ref = ref }}
                     multiline
                     autoFocus
                     autoCapitalize="none"
@@ -232,7 +224,6 @@ export default class Editor extends React.Component {
                     style={{ flex: 1, paddingTop: 30, padding: 10, fontSize: 15 }}
                     onSelectionChange={this.onSelectionChange}
                     onTextInput={this.onTextInput}
-                    selection={this.state.forceSelection}
                 >
                     <Renderer
                         editorState={this.state.editorState}
